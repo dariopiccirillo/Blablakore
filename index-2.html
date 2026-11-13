@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blablakore - Carpooling Universitario</title>
+  <!-- Caricamento Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Caricamento Font Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Caricamento Librerie React e Babel per eseguire l'app nel browser -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+  <!-- 1) INCOLLA QUI la configurazione del tuo progetto Firebase (vedi guida) -->
+  <script>
+    window.FIREBASE_CONFIG = {
+      apiKey: "INCOLLA_QUI",
+      authDomain: "INCOLLA_QUI",
+      projectId: "INCOLLA_QUI",
+      appId: "INCOLLA_QUI"
+    };
+  </script>
+</head>
+<body class="bg-white text-slate-900">
+  <div id="root"></div>
+
+  <!-- Inizializzazione Database Cloud Condiviso (opzionale) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    window.__FB_SDK__ = {
+      initializeApp, getAuth, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut,
+      getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot
+    };
+    window.dispatchEvent(new Event('fb-ready'));
+  </script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // Icone SVG standard
+    const IconCar = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+    );
+    const IconUsers = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    );
+    const IconBuilding = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+    );
+    const IconMapPin = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    );
+    const IconPhone = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    );
+    const IconPlus = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    );
+    const IconTrash = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+    );
+    const IconX = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    );
+    const IconSearch = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    );
+    const IconCopy = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    );
+    const IconCheckCircle = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    );
+    const IconUserPlus = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+    );
+    const IconShare = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+    );
+    const IconCalendar = ({ className = "w-3 h-3" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    );
+    const IconEuro = ({ className = "w-3.5 h-3.5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg>
+    );
+
+    const HOSPITALS = ['Cannizzaro', 'Morgagni', 'Altra Sede'];
+
+    function formatDateIt(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatPriceIt(price) {
+      if (price === undefined || price === null || price === '' || Number(price) === 0) {
+        return 'Gratuito';
+      }
+      const num = Number(price);
+      if (isNaN(num)) return price;
+      return `€ ${num.toFixed(2).replace('.', ',')} / persona`;
+    }
+
+    function getTodayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    const AVAILABLE_TAGS = [
+      'Puntuale',
+      'Silenzioso/a',
+      'Musica di sottofondo',
+      'No fumatori'
+    ];
+
+    function getInitials(name) {
+      if (!name) return '??';
+      const parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    const DEMO_RIDES = [
+      {
+        id: 'ride_demo_1',
+        driverName: 'Giulia Bianchi',
+        phone: '340 1234567',
+        hospital: 'Cannizzaro',
+        date: getTodayISO(),
+        departureTime: '07:45',
+        meetingPoint: 'Piazza Stazione Centrale (Lato edicola)',
+        totalSeats: 3,
+        estimatedPrice: 2.50,
+        passengers: ['Marco Verdi'],
+        tags: ['Puntuale', 'No fumatori'],
+        createdAt: Date.now()
+      },
+      {
+        id: 'ride_demo_2',
+        driverName: 'Alessandro Russo',
+        phone: '349 9876543',
+        hospital: 'Morgagni',
+        date: getTodayISO(),
+        departureTime: '08:15',
+        meetingPoint: 'Piazza Europa (Fermata Metro)',
+        totalSeats: 2,
+        estimatedPrice: 2.00,
+        passengers: [],
+        tags: ['Musica di sottofondo'],
+        createdAt: Date.now() - 1000
+      }
+    ];
+
+    function App() {
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'blablakore-unikore-v1';
+      const [db, setDb] = useState(null);
+      const [auth, setAuth] = useState(null);
+      const [userId, setUserId] = useState(null);
+      const [firebaseOn, setFirebaseOn] = useState(false);
+
+      const [authEmail, setAuthEmail] = useState('');
+      const [authMatricola, setAuthMatricola] = useState('');
+      const [authName, setAuthName] = useState('');
+      const [currentUser, setCurrentUser] = useState(null);
+
+      const [activeTab, setActiveTab] = useState('rides');
+      const [dateFilter, setDateFilter] = useState('');
+      const [hospitalFilter, setHospitalFilter] = useState('all');
+      const [searchQuery, setSearchQuery] = useState('');
+
+      const [colleagues, setColleagues] = useState([]);
+      const [rides, setRides] = useState(DEMO_RIDES);
+      const [requests, setRequests] = useState([]);
+
+      const [isAddRideOpen, setIsAddRideOpen] = useState(false);
+      const [isRequestRideOpen, setIsRequestRideOpen] = useState(false);
+      const [isBackupOpen, setIsBackupOpen] = useState(false);
+      const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
+
+      const [copiedId, setCopiedId] = useState(null);
+      const [toastMessage, setToastMessage] = useState(null);
+
+      useEffect(() => {
+        try {
+          const savedUser = localStorage.getItem('blablakore_user');
+          if (savedUser) setCurrentUser(JSON.parse(savedUser));
+          const savedRides = localStorage.getItem('blablakore_rides');
+          if (savedRides) setRides(JSON.parse(savedRides));
+          const savedColleagues = localStorage.getItem('blablakore_colleagues');
+          if (savedColleagues) setColleagues(JSON.parse(savedColleagues));
+          const savedRequests = localStorage.getItem('blablakore_requests');
+          if (savedRequests) setRequests(JSON.parse(savedRequests));
+        } catch (e) {
+          console.error(e);
+        }
+
+        const initFirebase = async () => {
+          const cfg = window.FIREBASE_CONFIG;
+          if (!window.__FB_SDK__ || !cfg || !cfg.apiKey || String(cfg.apiKey).startsWith('INCOLLA')) return;
+          try {
+            const S = window.__FB_SDK__;
+            const app = S.initializeApp(cfg);
+            const firestore = S.getFirestore(app);
+            const authentication = S.getAuth(app);
+            authentication.languageCode = 'it';
+            setDb(firestore);
+            setAuth(authentication);
+            setFirebaseOn(true);
+
+            let pending = null;
+            try { pending = JSON.parse(localStorage.getItem('blablakore_pending') || 'null'); } catch (e) {}
+
+            if (S.isSignInWithEmailLink(authentication, window.location.href)) {
+              let mail = pending && pending.email;
+              if (!mail) mail = window.prompt("Conferma la tua email istituzionale per completare l'accesso:");
+              if (mail) {
+                try {
+                  await S.signInWithEmailLink(authentication, mail.trim().toLowerCase(), window.location.href);
+                  window.history.replaceState({}, '', window.location.pathname);
+                } catch (e) {
+                  console.error(e);
+                  showToast('Link non valido o scaduto. Richiedine uno nuovo.', 'error');
+                }
+              }
+            }
+
+            S.onAuthStateChanged(authentication, async (user) => {
+              if (user && user.email && user.email.endsWith('@unikorestudent.it')) {
+                setUserId(user.uid);
+                let saved = null;
+                try { saved = JSON.parse(localStorage.getItem('blablakore_user') || 'null'); } catch (e) {}
+                let profile;
+                if (saved && saved.email === user.email) {
+                  profile = saved;
+                } else if (pending && pending.email === user.email) {
+                  profile = { id: 'user_' + pending.matricola, name: pending.name, email: user.email, matricola: pending.matricola, phone: '', car: '', avatar: getInitials(pending.name), createdAt: Date.now() };
+                } else {
+                  const nm = user.email.split('@')[0];
+                  profile = { id: 'user_' + user.uid, name: nm, email: user.email, matricola: '', phone: '', car: '', avatar: getInitials(nm), createdAt: Date.now() };
+                }
+                setCurrentUser(profile);
+                try { localStorage.removeItem('blablakore_pending'); } catch (e) {}
+                try { await S.setDoc(S.doc(firestore, 'artifacts', appId, 'public', 'data', 'colleagues', profile.id), profile); } catch (e) { console.error(e); }
+              } else {
+                setUserId(null);
+                setCurrentUser(null);
+              }
+            });
+          } catch (err) {
+            console.error('Modalità locale attiva:', err);
+          }
+        };
+
+        if (window.__FB_SDK__) {
+          initFirebase();
+        } else {
+          window.addEventListener('fb-ready', initFirebase);
+        }
+      }, []);
+
+      useEffect(() => {
+        if (!db || !userId) return;
+
+        const unsubColleagues = onSnapshot(
+          window.__FB_SDK__.collection(db, 'artifacts', appId, 'public', 'data', 'colleagues'),
+          (snapshot) => {
+            const list = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            setColleagues(list);
+          },
+          (err) => console.error(err)
+        );
+
+        const unsubRides = onSnapshot(
+          window.__FB_SDK__.collection(db, 'artifacts', appId, 'public', 'data', 'rides'),
+          (snapshot) => {
+            const list = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            setRides(list);
+          },
+          (err) => console.error(err)
+        );
+
+        const unsubRequests = onSnapshot(
+          window.__FB_SDK__.collection(db, 'artifacts', appId, 'public', 'data', 'requests'),
+          (snapshot) => {
+            const list = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            setRequests(list);
+          },
+          (err) => console.error(err)
+        );
+
+        return () => {
+          unsubColleagues();
+          unsubRides();
+          unsubRequests();
+        };
+      }, [db, userId, appId]);
+
+      useEffect(() => {
+        try {
+          if (currentUser) {
+            localStorage.setItem('blablakore_user', JSON.stringify(currentUser));
+          } else {
+            localStorage.removeItem('blablakore_user');
+          }
+        } catch (e) {}
+      }, [currentUser]);
+
+      useEffect(() => {
+        try { localStorage.setItem('blablakore_rides', JSON.stringify(rides)); } catch (e) {}
+      }, [rides]);
+
+      useEffect(() => {
+        try { localStorage.setItem('blablakore_colleagues', JSON.stringify(colleagues)); } catch (e) {}
+      }, [colleagues]);
+
+      useEffect(() => {
+        try { localStorage.setItem('blablakore_requests', JSON.stringify(requests)); } catch (e) {}
+      }, [requests]);
+
+      const showToast = (msg, type = 'success', duration = 3500) => {
+        setToastMessage({ msg, type });
+        setTimeout(() => {
+          setToastMessage(null);
+        }, duration);
+      };
+
+      const handleAuthSubmit = async (e) => {
+        e.preventDefault();
+        const cleanEmail = authEmail.trim().toLowerCase();
+        const cleanMatricola = authMatricola.trim();
+        const cleanName = authName.trim() || 'Studente Unikore';
+
+        if (!cleanEmail || !cleanMatricola) {
+          showToast('Email istituzionale e matricola sono obbligatorie.', 'error');
+          return;
+        }
+        if (!cleanEmail.endsWith('@unikorestudent.it')) {
+          showToast("Inserisci un'email valida che termini con @unikorestudent.it", 'error');
+          return;
+        }
+        if (cleanMatricola.length < 7 || cleanMatricola.length > 8 || !/^[0-9]{7,8}$/.test(cleanMatricola)) {
+          showToast('La matricola deve contenere 7 o 8 cifre.', 'error');
+          return;
+        }
+
+        if (firebaseOn && auth) {
+          try {
+            localStorage.setItem('blablakore_pending', JSON.stringify({ name: cleanName, email: cleanEmail, matricola: cleanMatricola }));
+            await window.__FB_SDK__.sendSignInLinkToEmail(auth, cleanEmail, { url: window.location.origin + window.location.pathname, handleCodeInApp: true });
+            showToast('Ti abbiamo inviato un link a ' + cleanEmail + '. Aprilo per entrare (controlla anche lo spam).', 'success', 15000);
+          } catch (err) {
+            console.error(err);
+            showToast("Impossibile inviare il link. Controlla l'email e riprova.", 'error');
+          }
+          return;
+        }
+
+        let userObj = {
+          id: 'user_' + cleanMatricola,
+          name: cleanName,
+          email: cleanEmail,
+          matricola: cleanMatricola,
+          phone: '',
+          car: '',
+          avatar: getInitials(cleanName),
+          createdAt: Date.now()
+        };
+
+        if (db && userId) {
+          try {
+            await window.__FB_SDK__.setDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'colleagues', userObj.id), userObj);
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setColleagues((prev) => prev.some(c => c.name === cleanName) ? prev : [...prev, userObj]);
+        }
+
+        setCurrentUser(userObj);
+        showToast(`Benvenuto/a in Blablakore, ${cleanName}!`, 'success');
+      };
+
+      const handleLogout = () => {
+        if (auth && window.__FB_SDK__) { try { window.__FB_SDK__.signOut(auth); } catch (e) {} }
+        setCurrentUser(null);
+        setAuthEmail('');
+        setAuthMatricola('');
+        setAuthName('');
+        showToast('Logout effettuato.', 'info');
+      };
+
+      const handleAddPerson = async (personData) => {
+        const newColleague = {
+          id: 'col_' + Date.now(),
+          name: personData.name.trim(),
+          email: personData.email ? personData.email.trim() : '',
+          matricola: personData.matricola ? personData.matricola.trim() : '12345678',
+          phone: personData.phone.trim(),
+          car: personData.car.trim(),
+          avatar: getInitials(personData.name),
+          createdAt: Date.now()
+        };
+
+        if (db) {
+          try {
+            await window.__FB_SDK__.setDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'colleagues', newColleague.id), newColleague);
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setColleagues((prev) => [...prev, newColleague]);
+        }
+
+        setIsAddPersonOpen(false);
+        showToast(`${newColleague.name} aggiunto con successo!`, 'success');
+      };
+
+      const handleDeletePerson = async (id) => {
+        if (currentUser && currentUser.id === id) {
+          showToast("Non puoi eliminare il tuo profilo attivo.", 'error');
+          return;
+        }
+        if (db) {
+          try {
+            await window.__FB_SDK__.deleteDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'colleagues', id));
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setColleagues((prev) => prev.filter((c) => c.id !== id));
+        }
+        showToast('Partecipante rimosso.', 'info');
+      };
+
+      const handleCreateRide = async (rideData) => {
+        const rideId = 'ride_' + Date.now();
+        const newRide = {
+          id: rideId,
+          ...rideData,
+          passengers: [],
+          createdAt: Date.now()
+        };
+
+        if (db) {
+          try {
+            await window.__FB_SDK__.setDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'rides', rideId), newRide);
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setRides((prev) => [newRide, ...prev]);
+        }
+
+        setIsAddRideOpen(false);
+        showToast('Passaggio pubblicato su Blablakore!', 'success');
+      };
+
+      const handleDeleteRide = async (rideId) => {
+        if (db) {
+          try {
+            await window.__FB_SDK__.deleteDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'rides', rideId));
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setRides((prev) => prev.filter((r) => r.id !== rideId));
+        }
+        showToast('Passaggio eliminato.', 'info');
+      };
+
+      const handleToggleBooking = async (ride) => {
+        if (!currentUser) return;
+        const isBooked = ride.passengers.includes(currentUser.name);
+
+        let updatedPassengers;
+        if (isBooked) {
+          updatedPassengers = ride.passengers.filter((p) => p !== currentUser.name);
+          showToast('Prenotazione annullata.', 'info');
+        } else {
+          if (ride.passengers.length >= ride.totalSeats) {
+            showToast('Spiacenti, questo passaggio è al completo!', 'error');
+            return;
+          }
+          updatedPassengers = [...ride.passengers, currentUser.name];
+          showToast('Posto prenotato con successo!', 'success');
+        }
+
+        if (db) {
+          try {
+            await window.__FB_SDK__.updateDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'rides', ride.id), {
+              passengers: updatedPassengers
+            });
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setRides((prev) =>
+            prev.map((r) => (r.id === ride.id ? { ...r, passengers: updatedPassengers } : r))
+          );
+        }
+      };
+
+      const handleCreateRequest = async (reqData) => {
+        const reqId = 'req_' + Date.now();
+        const newReq = {
+          id: reqId,
+          ...reqData,
+          createdAt: Date.now()
+        };
+
+        if (db) {
+          try {
+            await window.__FB_SDK__.setDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'requests', reqId), newReq);
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setRequests((prev) => [newReq, ...prev]);
+        }
+
+        setIsRequestRideOpen(false);
+        showToast('Richiesta passaggio pubblicata!', 'success');
+      };
+
+      const handleDeleteRequest = async (reqId) => {
+        if (db) {
+          try {
+            await window.__FB_SDK__.deleteDoc(window.__FB_SDK__.doc(db, 'artifacts', appId, 'public', 'data', 'requests', reqId));
+          } catch (err) {
+            console.error(err);
+            showToast("Operazione non riuscita. Verifica di aver effettuato l'accesso.", 'error');
+          }
+        } else {
+          setRequests((prev) => prev.filter((r) => r.id !== reqId));
+        }
+        showToast('Richiesta eliminata.', 'info');
+      };
+
+      const handleCopyWhatsApp = (ride) => {
+        if (!currentUser) return;
+        const priceInfo = ride.estimatedPrice > 0 ? ` (stima contributo: € ${Number(ride.estimatedPrice).toFixed(2).replace('.', ',')})` : '';
+        const text = `Ciao ${ride.driverName}! Sono ${currentUser.name} (${currentUser.matricola}). Ti scrivo da Blablakore per confermare il passaggio verso ${ride.hospital} del ${formatDateIt(ride.date)} alle ore ${ride.departureTime} (Ritrovo: ${ride.meetingPoint})${priceInfo}. A presto!`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text);
+        }
+        setCopiedId(ride.id);
+        showToast('Messaggio WhatsApp copiato negli appunti!', 'success');
+        setTimeout(() => setCopiedId(null), 3000);
+      };
+
+      const filteredRides = useMemo(() => {
+        return rides.filter((ride) => {
+          if (dateFilter && ride.date !== dateFilter) return false;
+          if (hospitalFilter !== 'all' && ride.hospital !== hospitalFilter) return false;
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const matchDriver = ride.driverName.toLowerCase().includes(q);
+            const matchPoint = ride.meetingPoint.toLowerCase().includes(q);
+            const matchHospital = (ride.hospital || '').toLowerCase().includes(q);
+            if (!matchDriver && !matchPoint && !matchHospital) return false;
+          }
+          return true;
+        });
+      }, [rides, dateFilter, hospitalFilter, searchQuery]);
+
+      const myBookedRides = useMemo(() => {
+        if (!currentUser) return [];
+        return rides.filter((r) => r.passengers.includes(currentUser.name));
+      }, [rides, currentUser]);
+
+      if (!currentUser) {
+        return (
+          <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-center items-center p-4">
+            <div className="max-w-md w-full bg-white rounded-2xl p-8 border border-slate-200 shadow-xl">
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-indigo-950 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                  <IconCar className="w-6 h-6" />
+                </div>
+                <h1 className="text-xl font-extrabold text-slate-900">Blablakore</h1>
+                <p className="text-xs text-slate-500 mt-1">
+                  Email istituzionale e matricola sono obbligatorie per accedere.
+                </p>
+              </div>
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nome e Cognome</label>
+                  <input
+                    type="text"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Es. Mario Rossi"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Istituzionale *</label>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="nome.cognome@unikorestudent.it"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Obbligatoria (@unikorestudent.it)</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Numero di Matricola (7 o 8 cifre) *</label>
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    pattern="[0-9]{7,8}"
+                    maxLength={8}
+                    autoComplete="off"
+                    value={authMatricola}
+                    onChange={(e) => setAuthMatricola(e.target.value)}
+                    placeholder="Es. 12345678"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-2 bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-sm cursor-pointer"
+                >
+                  Accedi a Blablakore
+                </button>
+              </form>
+            </div>
+
+            {toastMessage && (
+              <div
+                className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl text-xs font-bold shadow-lg ${
+                  toastMessage.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
+                }`}
+              >
+                {toastMessage.msg}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
+          <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
+            <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-indigo-950 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-sm">
+                  <IconCar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h1 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">
+                    Blablakore
+                  </h1>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Carpooling universitario condiviso
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-xs font-extrabold text-slate-900">{currentUser.name}</span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Mat. {currentUser.matricola}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition cursor-pointer"
+                >
+                  Esci
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setActiveTab('rides')}
+                  className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    activeTab === 'rides'
+                      ? 'bg-indigo-950 text-white shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  Bacheca Passaggi ({filteredRides.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('requests')}
+                  className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    activeTab === 'requests'
+                      ? 'bg-indigo-950 text-white shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  Cerco Passaggio ({requests.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('colleagues')}
+                  className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    activeTab === 'colleagues'
+                      ? 'bg-indigo-950 text-white shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  Partecipanti & Miei Viaggi ({colleagues.length})
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsAddRideOpen(true)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-indigo-950 hover:bg-indigo-900 text-white text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl transition shadow-sm cursor-pointer"
+                >
+                  <IconPlus className="w-4 h-4" /> Offri un passaggio
+                </button>
+                <button
+                  onClick={() => setIsRequestRideOpen(true)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
+                >
+                  Cerco passaggio
+                </button>
+              </div>
+            </div>
+
+            {activeTab === 'rides' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <IconSearch className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Cerca conducente o luogo..."
+                        className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-slate-900"
+                      />
+                    </div>
+
+                    <select
+                      value={hospitalFilter}
+                      onChange={(e) => setHospitalFilter(e.target.value)}
+                      className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none cursor-pointer"
+                    >
+                      <option value="all">Tutte le destinazioni</option>
+                      {HOSPITALS.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2">
+                      <IconCalendar className="w-3 h-3 text-slate-700 shrink-0" />
+                      <input
+                        type="date"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        title="Filtra per data"
+                        className="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                      />
+                      {dateFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setDateFilter('')}
+                          className="text-slate-400 hover:text-slate-700 ml-1 cursor-pointer"
+                        >
+                          <IconX className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {filteredRides.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+                    <IconCar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <h3 className="text-base font-extrabold text-slate-800">Nessun passaggio disponibile</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Non ci sono passaggi attivi con i filtri selezionati. Proponi tu il primo passaggio!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredRides.map((ride) => {
+                      const isBooked = ride.passengers.includes(currentUser.name);
+                      const isMyRide = ride.driverName === currentUser.name;
+                      const availableSeats = ride.totalSeats - ride.passengers.length;
+
+                      return (
+                        <div
+                          key={ride.id}
+                          className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between gap-4 shadow-xs"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-indigo-950 text-white flex items-center gap-1.5">
+                                  <IconBuilding className="w-3.5 h-3.5" /> {ride.hospital || 'Sede'}
+                                </span>
+                                <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                                  {formatPriceIt(ride.estimatedPrice)}
+                                </span>
+                              </div>
+                              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                {ride.date && (
+                                  <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 font-bold">
+                                    <IconCalendar className="w-3 h-3 text-slate-700" /> {formatDateIt(ride.date)}
+                                  </span>
+                                )}
+                                <span className="font-semibold">{ride.departureTime}</span>
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                                <IconMapPin className="w-4 h-4 text-slate-500 shrink-0" />
+                                <span>{ride.meetingPoint}</span>
+                              </div>
+                            </div>
+
+                            {ride.tags && ride.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {ride.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-indigo-950 text-white font-bold text-sm flex items-center justify-center shrink-0">
+                                {getInitials(ride.driverName)}
+                              </div>
+                              <div>
+                                <span className="text-sm font-extrabold text-slate-900 block leading-tight">
+                                  {ride.driverName}
+                                </span>
+                                {ride.phone && (
+                                  <span className="text-[11px] text-slate-700 font-semibold flex items-center gap-1 mt-0.5">
+                                    <IconPhone className="w-3 h-3" /> {ride.phone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 ml-auto">
+                              <span
+                                className={`text-xs font-extrabold px-2.5 py-1 rounded-xl ${
+                                  availableSeats > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                }`}
+                              >
+                                {availableSeats > 0 ? `${availableSeats} liberi` : 'Completo'}
+                              </span>
+
+                              {!isMyRide && (
+                                <button
+                                  onClick={() => handleToggleBooking(ride)}
+                                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    isBooked
+                                      ? 'bg-red-50 hover:bg-red-100 text-red-600'
+                                      : availableSeats > 0
+                                      ? 'bg-indigo-950 hover:bg-indigo-900 text-white'
+                                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                  }`}
+                                >
+                                  {isBooked ? 'Disdici' : 'Prenota'}
+                                </button>
+                              )}
+
+                              {isMyRide && (
+                                <button
+                                  onClick={() => handleDeleteRide(ride.id)}
+                                  className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer"
+                                  title="Elimina passaggio"
+                                >
+                                  <IconTrash className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {isBooked && (
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                              <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                                <IconCheckCircle className="w-3.5 h-3.5" /> Posto riservato a te
+                              </span>
+                              <button
+                                onClick={() => handleCopyWhatsApp(ride)}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:underline cursor-pointer"
+                              >
+                                <IconCopy className="w-3.5 h-3.5" />
+                                {copiedId === ride.id ? 'Copiato!' : 'Copia WhatsApp'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'requests' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-900">Richieste "Cerco Passaggio"</h2>
+                    <p className="text-xs text-slate-500">Colleghi in cerca di un passaggio per il turno</p>
+                  </div>
+                  <button
+                    onClick={() => setIsRequestRideOpen(true)}
+                    className="bg-indigo-950 hover:bg-indigo-900 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
+                  >
+                    Pubblica richiesta
+                  </button>
+                </div>
+
+                {requests.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+                    <IconUsers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <h3 className="text-base font-extrabold text-slate-800">Nessuna richiesta attiva</h3>
+                    <p className="text-xs text-slate-500 mt-1">Al momento nessuno ha pubblicato richieste di passaggio.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {requests.map((req) => {
+                      const isMyRequest = req.requesterName === currentUser.name;
+                      return (
+                        <div key={req.id} className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col justify-between gap-3 shadow-xs">
+                          <div>
+                            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-indigo-950 text-white flex items-center gap-1">
+                                <IconBuilding className="w-3 h-3" /> {req.hospital}
+                              </span>
+                              <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                {req.date && (
+                                  <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-bold">
+                                    <IconCalendar className="w-3 h-3 text-slate-700" /> {formatDateIt(req.date)}
+                                  </span>
+                                )}
+                                <span className="font-semibold">{req.time}</span>
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-slate-800 mt-2">{req.details || 'Cerco passaggio per il turno.'}</p>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center">
+                                {getInitials(req.requesterName)}
+                              </div>
+                              <div>
+                                <p className="text-xs font-extrabold text-slate-900">{req.requesterName}</p>
+                                {req.phone && <p className="text-[11px] text-slate-500">{req.phone}</p>}
+                              </div>
+                            </div>
+
+                            {isMyRequest && (
+                              <button
+                                onClick={() => handleDeleteRequest(req.id)}
+                                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer"
+                              >
+                                <IconTrash className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'colleagues' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        <IconUsers className="w-5 h-5 text-indigo-950" />
+                        Elenco Partecipanti ({colleagues.length})
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Tutti i tirocinanti registrati su Blablakore.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsBackupOpen(true)}
+                        className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2 px-3.5 rounded-xl transition cursor-pointer"
+                      >
+                        <IconShare className="w-4 h-4" /> Esporta / Backup
+                      </button>
+                      <button
+                        onClick={() => setIsAddPersonOpen(true)}
+                        className="inline-flex items-center gap-2 bg-indigo-950 hover:bg-indigo-900 text-white text-xs font-bold py-2 px-3.5 rounded-xl transition cursor-pointer"
+                      >
+                        <IconUserPlus className="w-4 h-4" /> Aggiungi partecipante
+                      </button>
+                    </div>
+                  </div>
+
+                  {colleagues.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-4">Nessun partecipante registrato.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {colleagues.map((col) => {
+                        const isSelected = currentUser.id === col.id;
+                        return (
+                          <div
+                            key={col.id}
+                            className={`rounded-xl p-3.5 border flex items-center justify-between gap-2 transition ${
+                              isSelected ? 'border-indigo-950 bg-slate-50' : 'border-slate-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-indigo-950 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                {col.avatar || getInitials(col.name)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{col.name}</p>
+                                <p className="text-[11px] text-slate-500 truncate">
+                                  {col.matricola ? `Mat. ${col.matricola}` : ''} {col.email ? `• ${col.email}` : ''}
+                                </p>
+                              </div>
+                            </div>
+
+                            {!isSelected && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePerson(col.id)}
+                                title="Rimuovi"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                              >
+                                <IconTrash className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <IconCheckCircle className="w-5 h-5 text-indigo-950" />
+                    I tuoi passaggi prenotati ({myBookedRides.length})
+                  </h2>
+
+                  {myBookedRides.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 text-sm text-slate-500">
+                      Non hai ancora prenotato alcun passaggio.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {myBookedRides.map((ride) => (
+                        <div key={ride.id} className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col justify-between gap-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-950 text-white flex items-center gap-1">
+                                  <IconBuilding className="w-3 h-3" /> {ride.hospital}
+                                </span>
+                                <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                  {formatPriceIt(ride.estimatedPrice)}
+                                </span>
+                              </div>
+                              <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                {ride.date && (
+                                  <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-bold">
+                                    <IconCalendar className="w-3 h-3 text-slate-700" /> {formatDateIt(ride.date)}
+                                  </span>
+                                )}
+                                <span className="font-semibold">{ride.departureTime}</span>
+                              </span>
+                            </div>
+                            <p className="text-sm font-extrabold text-slate-900">Con {ride.driverName}</p>
+                            <p className="text-xs text-slate-600 mt-1">Ritrovo: <strong>{ride.meetingPoint}</strong></p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+                            <button
+                              onClick={() => handleCopyWhatsApp(ride)}
+                              className="flex-1 inline-flex items-center justify-center gap-2 bg-indigo-950 hover:bg-indigo-900 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition cursor-pointer"
+                            >
+                              <IconCopy className="w-4 h-4" /> Copia WhatsApp
+                            </button>
+                            <button
+                              onClick={() => handleToggleBooking(ride)}
+                              className="px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition cursor-pointer"
+                            >
+                              Disdici
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {isAddRideOpen && (
+            <AddRideModal
+              currentUser={currentUser}
+              onClose={() => setIsAddRideOpen(false)}
+              onSubmit={handleCreateRide}
+            />
+          )}
+
+          {isRequestRideOpen && (
+            <RequestRideModal
+              currentUser={currentUser}
+              onClose={() => setIsRequestRideOpen(false)}
+              onSubmit={handleCreateRequest}
+            />
+          )}
+
+          {isAddPersonOpen && (
+            <AddPersonModal
+              onClose={() => setIsAddPersonOpen(false)}
+              onSubmit={handleAddPerson}
+            />
+          )}
+
+          {isBackupOpen && (
+            <BackupModal
+              colleagues={colleagues}
+              rides={rides}
+              onClose={() => setIsBackupOpen(false)}
+            />
+          )}
+
+          {toastMessage && (
+            <div
+              className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl text-xs font-bold shadow-lg ${
+                toastMessage.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
+              }`}
+            >
+              {toastMessage.msg}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function AddRideModal({ currentUser, onClose, onSubmit }) {
+      const [driverName, setDriverName] = useState(currentUser.name);
+      const [phone, setPhone] = useState(currentUser.phone || '');
+      const [hospital, setHospital] = useState('Cannizzaro');
+      const [date, setDate] = useState(getTodayISO());
+      const [departureTime, setDepartureTime] = useState('08:00');
+      const [meetingPoint, setMeetingPoint] = useState('');
+      const [totalSeats, setTotalSeats] = useState(3);
+      const [estimatedPrice, setEstimatedPrice] = useState('2.00');
+      const [selectedTags, setSelectedTags] = useState([]);
+
+      const toggleTag = (tag) => {
+        setSelectedTags((prev) =>
+          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+        );
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!meetingPoint.trim()) return;
+
+        onSubmit({
+          driverName: driverName.trim(),
+          phone: phone.trim(),
+          hospital,
+          date,
+          departureTime,
+          meetingPoint: meetingPoint.trim(),
+          totalSeats: Number(totalSeats),
+          estimatedPrice: estimatedPrice !== '' ? Number(estimatedPrice) : 0,
+          tags: selectedTags
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full shadow-xl border border-slate-200 overflow-hidden my-8">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconCar className="w-5 h-5 text-indigo-950" />
+                <h2 className="text-base font-extrabold text-slate-900">Offri un passaggio</h2>
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
+                <IconX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Destinazione</label>
+                  <select
+                    value={hospital}
+                    onChange={(e) => setHospital(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:outline-none cursor-pointer"
+                  >
+                    {HOSPITALS.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Conducente</label>
+                  <input
+                    type="text"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Data Viaggio</label>
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white">
+                    <IconCalendar className="w-3 h-3 text-slate-700 shrink-0" />
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full text-xs font-semibold bg-transparent focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ora Partenza</label>
+                  <input
+                    type="text"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                    placeholder="08:00"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Posti Disponibili</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={totalSeats}
+                    onChange={(e) => setTotalSeats(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Stima Costo (€ / pers.) *</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">€</span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0"
+                      max="100"
+                      required
+                      value={estimatedPrice}
+                      onChange={(e) => setEstimatedPrice(e.target.value)}
+                      placeholder="Es. 2.50"
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">0 per passaggio gratuito</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp / Telefono</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Es. 340 0000000"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Punto di Ritrovo *</label>
+                  <input
+                    type="text"
+                    required
+                    value={meetingPoint}
+                    onChange={(e) => setMeetingPoint(e.target.value)}
+                    placeholder="Es. Piazza Stazione"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Preferenze viaggio</label>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_TAGS.map((tag) => {
+                    const active = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleTag(tag)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                          active
+                            ? 'bg-indigo-950 text-white border-indigo-950'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-white text-sm font-bold shadow-sm cursor-pointer"
+                >
+                  Pubblica passaggio
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function RequestRideModal({ currentUser, onClose, onSubmit }) {
+      const [hospital, setHospital] = useState('Cannizzaro');
+      const [date, setDate] = useState(getTodayISO());
+      const [time, setTime] = useState('08:00');
+      const [details, setDetails] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit({
+          requesterName: currentUser.name,
+          phone: currentUser.phone || '',
+          hospital,
+          date,
+          time,
+          details: details.trim()
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconUsers className="w-5 h-5 text-indigo-950" />
+                <h2 className="text-base font-extrabold text-slate-900">Cerco Passaggio</h2>
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
+                <IconX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Destinazione</label>
+                <select
+                  value={hospital}
+                  onChange={(e) => setHospital(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:outline-none cursor-pointer"
+                >
+                  {HOSPITALS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Data</label>
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white">
+                    <IconCalendar className="w-3 h-3 text-slate-700 shrink-0" />
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full text-xs font-semibold bg-transparent focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Orario</label>
+                  <input
+                    type="text"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    placeholder="08:00"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Dettagli / Indirizzo</label>
+                <textarea
+                  rows={3}
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="Descrivi dove abiti o quale fermata ti è comoda..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-white text-sm font-bold cursor-pointer"
+                >
+                  Pubblica richiesta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function AddPersonModal({ onClose, onSubmit }) {
+      const [name, setName] = useState('');
+      const [email, setEmail] = useState('');
+      const [matricola, setMatricola] = useState('');
+      const [phone, setPhone] = useState('');
+      const [car, setCar] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSubmit({ name, email, matricola, phone, car });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconUserPlus className="w-5 h-5 text-indigo-950" />
+                <h2 className="text-base font-extrabold text-slate-900">Aggiungi Partecipante</h2>
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
+                <IconX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nome e Cognome *</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Es. Mario Rossi"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Istituzionale</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@unikorestudent.it"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Matricola</label>
+                  <input
+                    type="text"
+                    value={matricola}
+                    onChange={(e) => setMatricola(e.target.value)}
+                    placeholder="12345678"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp / Tel</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="3400000000"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-white text-sm font-bold cursor-pointer"
+                >
+                  Salva
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function BackupModal({ colleagues, rides, onClose }) {
+      const [copied, setCopied] = useState(false);
+
+      const reportText = useMemo(() => {
+        const lines = [];
+        lines.push(`=== BLABLAKORE - RIEPILOGO ===`);
+        lines.push(`Partecipanti (${colleagues.length}):`);
+        colleagues.forEach((c, idx) => {
+          lines.push(`${idx + 1}. ${c.name} (Mat. ${c.matricola || 'N/D'})`);
+        });
+        lines.push(`\nPassaggi Attivi (${rides.length}):`);
+        rides.forEach((r) => {
+          const priceStr = r.estimatedPrice > 0 ? `€ ${Number(r.estimatedPrice).toFixed(2).replace('.', ',')}/pers.` : 'Gratuito';
+          lines.push(`- [Destinazione: ${r.hospital} | ${formatDateIt(r.date)} ${r.departureTime} | ${priceStr}] ${r.driverName} da "${r.meetingPoint}" (${r.passengers.length}/${r.totalSeats} posti)`);
+        });
+        return lines.join('\n');
+      }, [colleagues, rides]);
+
+      const handleCopy = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(reportText);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-slate-900">Backup ed Esportazione</h2>
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
+                <IconX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-600">Copia il riepilogo testuale da incollare su WhatsApp:</p>
+              <textarea
+                readOnly
+                rows={8}
+                value={reportText}
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800 focus:outline-none select-all"
+              />
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Chiudi
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="px-5 py-2 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-white text-sm font-bold flex items-center gap-2 cursor-pointer"
+                >
+                  <IconCopy className="w-4 h-4" /> {copied ? 'Copiato!' : 'Copia Riepilogo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
